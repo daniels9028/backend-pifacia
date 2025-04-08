@@ -3,8 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\ExportMembersJob;
+use App\Jobs\ImportMembersJob;
 use App\Models\Member;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class MemberController extends Controller
 {
@@ -68,5 +71,38 @@ class MemberController extends Controller
         $member->delete();
 
         return response()->json(['message' => 'Member berhasil dihapus (soft delete).']);
+    }
+
+    public function export(Request $request)
+    {
+        $request->validate([
+            'fields' => 'required|array|min:1',
+        ]);
+
+        $userId = auth()->id();
+
+        $filename = "exports/members_{$userId}_" . time() . ".xlsx";
+
+        ExportMembersJob::dispatch($userId, $request->fields, $filename);
+
+        $url = Storage::url($filename);
+
+        return response()->json([
+            'message' => 'Export is being processed.',
+            'file_url' => $url
+        ]);
+    }
+
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx,xls',
+        ]);
+
+        $path = $request->file('file')->store('imports', 'public');
+
+        ImportMembersJob::dispatch($path);
+
+        return response()->json(['message' => 'Import job dispatched.']);
     }
 }
