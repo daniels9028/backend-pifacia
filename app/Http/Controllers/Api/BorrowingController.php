@@ -3,7 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-
+use App\Jobs\ExportBorrowingJob;
+use App\Jobs\ImportBorrowingJob;
 use App\Models\Borrowing;
 use App\Models\Book;
 use App\Models\Member;
@@ -113,5 +114,38 @@ class BorrowingController extends Controller
         return response()->json([
             'message' => 'Peminjaman berhasil dihapus (soft delete).'
         ]);
+    }
+
+    public function export(Request $request)
+    {
+        $request->validate([
+            'fields' => 'required|array|min:1',
+        ]);
+
+        $userId = auth()->id();
+
+        $filename = "exports/borrowing_{$userId}_" . time() . ".xlsx";
+
+        ExportBorrowingJob::dispatch($userId, $request->fields, $filename);
+
+        $url = Storage::url($filename);
+
+        return response()->json([
+            'message' => 'Export is being processed.',
+            'file_url' => $url
+        ]);
+    }
+
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx,xls',
+        ]);
+
+        $path = $request->file('file')->store('imports', 'public');
+
+        ImportBorrowingJob::dispatch($path);
+
+        return response()->json(['message' => 'Import job dispatched.']);
     }
 }
