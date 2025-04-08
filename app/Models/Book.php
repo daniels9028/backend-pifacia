@@ -2,17 +2,19 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
+use OwenIt\Auditing\Contracts\Auditable;
 
-class Book extends Model
+class Book extends Model implements Auditable
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, HasUuids, \OwenIt\Auditing\Auditable;
 
-    protected $keyType = 'string';
     public $incrementing = false;
+    protected $keyType = 'string';
 
     protected $fillable = [
         'id',
@@ -33,6 +35,14 @@ class Book extends Model
             $model->id = Str::uuid();
         });
     }
+
+    public function resolveUserId()
+    {
+        // Use auth()->user() and, as a fallback, request()->user()
+        $user = auth()->user() ?? request()->user();
+        return $user ? $user->getAuthIdentifier() : null;
+    }
+
 
     public function borrowings()
     {

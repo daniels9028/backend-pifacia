@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
+use OwenIt\Auditing\Models\Audit;
 
 class UserController extends Controller
 {
@@ -107,5 +108,31 @@ class UserController extends Controller
             'success' => true,
             'message' => 'User deleted successfully.',
         ]);
+    }
+
+    public function audit()
+    {
+        $audits = Audit::with(['user', 'auditable']) // include polymorphic relasi
+            ->latest()
+            ->get()
+            ->map(function ($audit) {
+                $model = optional($audit->auditable);
+
+                return [
+                    'user' => optional($audit->user)->name ?? 'System',
+                    'event' => $audit->event,
+                    'model_type' => class_basename($audit->auditable_type),
+                    'id' => $audit->auditable_id,
+                    'model_title' => $model->title ?? $model->name ?? '[deleted]', // fallback properties
+                    'model_summary' => method_exists($model, 'getAuditLabel')
+                        ? $model->getAuditLabel()
+                        : '-', // if you add a helper on model
+                    'old_values' => $audit->old_values,
+                    'new_values' => $audit->new_values,
+                    'created_at' => $audit->created_at->toDateTimeString(),
+                ];
+            });
+
+        return response()->json(['data' => $audits]);
     }
 }

@@ -8,6 +8,7 @@ use App\Jobs\ImportMembersJob;
 use App\Models\Member;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use OwenIt\Auditing\Models\Audit;
 
 class MemberController extends Controller
 {

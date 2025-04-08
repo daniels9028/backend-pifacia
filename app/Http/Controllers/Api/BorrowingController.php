@@ -10,6 +10,7 @@ use App\Models\Book;
 use App\Models\Member;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use OwenIt\Auditing\Models\Audit;
 
 class BorrowingController extends Controller
 {
