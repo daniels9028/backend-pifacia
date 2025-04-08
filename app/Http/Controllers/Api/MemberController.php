@@ -1,0 +1,72 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Models\Member;
+use Illuminate\Http\Request;
+
+class MemberController extends Controller
+{
+    public function index(Request $request)
+    {
+        $members = Member::when($request->search, function ($q) use ($request) {
+            $q->where('name', 'like', '%' . $request->search . '%');
+        })
+            ->orderBy('name')
+            ->paginate(10);
+
+        return response()->json($members);
+    }
+
+    public function store(Request $request)
+    {
+        $request->validate([
+            'name'  => 'required|string|max:255',
+            'email' => 'required|email|unique:members,email',
+        ]);
+
+        $member = Member::create([
+            'name'      => $request->name,
+            'email'     => $request->email,
+            'is_active' => true,
+        ]);
+
+        return response()->json([
+            'message' => 'Member berhasil ditambahkan.',
+            'data'    => $member
+        ], 201);
+    }
+
+    public function show($id)
+    {
+        $member = Member::findOrFail($id);
+        return response()->json($member);
+    }
+
+    public function update(Request $request, $id)
+    {
+        $member = Member::findOrFail($id);
+
+        $request->validate([
+            'name'      => 'required|string|max:255',
+            'email'     => 'required|email|unique:members,email,' . $member->id,
+            'is_active' => 'boolean',
+        ]);
+
+        $member->update($request->only(['name', 'email', 'is_active']));
+
+        return response()->json([
+            'message' => 'Member berhasil diperbarui.',
+            'data' => $member
+        ]);
+    }
+
+    public function destroy($id)
+    {
+        $member = Member::findOrFail($id);
+        $member->delete();
+
+        return response()->json(['message' => 'Member berhasil dihapus (soft delete).']);
+    }
+}

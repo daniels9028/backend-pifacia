@@ -1,0 +1,117 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+
+use App\Models\Borrowing;
+use App\Models\Book;
+use App\Models\Member;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+
+class BorrowingController extends Controller
+{
+    public function getFormOptions()
+    {
+        $books = Book::get(['id', 'title', 'author']);
+        $members = Member::where('is_active', true)->get(['id', 'name', 'email']);
+
+        return response()->json([
+            'books' => $books,
+            'members' => $members,
+        ]);
+    }
+
+    public function index(Request $request)
+    {
+        $borrowings = Borrowing::with(['book', 'member'])
+            ->when($request->search, function ($query) use ($request) {
+                $query->whereHas('member', function ($q) use ($request) {
+                    $q->where('name', 'like', '%' . $request->search . '%');
+                });
+            })
+            ->orderBy('borrowed_at', 'desc')
+            ->paginate(10);
+
+        return response()->json($borrowings);
+    }
+
+    public function store(Request $request)
+    {
+        $request->validate([
+            'book_id'     => 'required|exists:books,id',
+            'member_id'   => 'required|exists:members,id',
+            'borrowed_at' => 'required|date',
+            'attachment'  => 'nullable|file|mimes:pdf|max:512',
+        ]);
+
+        $data = $request->only(['book_id', 'member_id', 'borrowed_at']);
+        $data['returned'] = false;
+        $data['notes'] = $request->input('notes') ?? [];
+
+        if ($request->hasFile('attachment')) {
+            $data['attachment'] = $request->file('attachment')->store('attachments');
+        }
+
+        $borrowing = Borrowing::create($data);
+
+        // Set buku jadi tidak tersedia
+        Book::where('id', $data['book_id'])->update(['is_available' => false]);
+
+        return response()->json([
+            'message' => 'Peminjaman berhasil ditambahkan.',
+            'data' => $borrowing
+        ], 201);
+    }
+
+    public function show($id)
+    {
+        $borrowing = Borrowing::with(['book', 'member'])->findOrFail($id);
+        return response()->json($borrowing);
+    }
+
+    public function update(Request $request, $id)
+    {
+        $borrowing = Borrowing::findOrFail($id);
+
+        $request->validate([
+            'book_id'     => 'required|exists:books,id',
+            'member_id'   => 'required|exists:members,id',
+            'borrowed_at' => 'required|date',
+            'attachment'  => 'nullable|file|mimes:pdf|max:512',
+        ]);
+
+        $data = $request->only(['book_id', 'member_id', 'borrowed_at']);
+        $data['notes'] = $request->input('notes') ?? $borrowing->notes;
+
+        if ($request->hasFile('attachment')) {
+            if ($borrowing->attachment) {
+                Storage::delete($borrowing->attachment);
+            }
+            $data['attachment'] = $request->file('attachment')->store('attachments');
+        }
+
+        $borrowing->update($data);
+
+        // Update status ketersediaan buku
+        // Book::where('id', $borrowing->book_id)->update([
+        //     'is_available' => !$data['returned']
+        // ]);
+
+        return response()->json([
+            'message' => 'Peminjaman berhasil diperbarui.',
+            'data' => $borrowing
+        ]);
+    }
+
+    public function destroy($id)
+    {
+        $borrowing = Borrowing::findOrFail($id);
+        $borrowing->delete();
+
+        return response()->json([
+            'message' => 'Peminjaman berhasil dihapus (soft delete).'
+        ]);
+    }
+}
