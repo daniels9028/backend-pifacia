@@ -33,15 +33,18 @@ Route::apiResource('account', UserController::class)->middleware('auth:sanctum')
 Route::apiResource('book', BookController::class)->middleware('auth:sanctum');
 Route::post('/book/export', [BookController::class, 'export'])->middleware('auth:sanctum');
 Route::post('/book/import', [BookController::class, 'import'])->middleware('auth:sanctum');
+Route::get('/books/audit', [BookController::class, 'audit'])->middleware('auth:sanctum');
 
 
 Route::apiResource('member', MemberController::class)->middleware('auth:sanctum');
 Route::post('/member/export', [MemberController::class, 'export'])->middleware('auth:sanctum');
 Route::post('/member/import', [MemberController::class, 'import'])->middleware('auth:sanctum');
+Route::get('/members/audit', [MemberController::class, 'audit'])->middleware('auth:sanctum');
 
 Route::apiResource('borrowing', BorrowingController::class)->middleware('auth:sanctum');
 Route::get('/borrowings/form-options', [BorrowingController::class, 'getFormOptions'])->middleware('auth:sanctum');
 Route::post('/borrowing/export', [BorrowingController::class, 'export'])->middleware('auth:sanctum');
 Route::post('/borrowing/import', [BorrowingController::class, 'import'])->middleware('auth:sanctum');
+Route::get('/borrowings/audit', [BorrowingController::class, 'audit'])->middleware('auth:sanctum');
 
 Route::get('/audit', [UserController::class, 'audit'])->middleware('auth:sanctum');

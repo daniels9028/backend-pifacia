@@ -22,6 +22,8 @@ class AppServiceProvider extends ServiceProvider
     {
         Relation::morphMap([
             'books' => \App\Models\Book::class,
+            'members' => \App\Models\Member::class,
+            'borrowing' => \App\Models\Borrowing::class,
             // tambahkan model lain kalau perlu
         ]);
     }

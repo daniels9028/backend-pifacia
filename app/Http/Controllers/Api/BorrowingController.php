@@ -149,4 +149,27 @@ class BorrowingController extends Controller
 
         return response()->json(['message' => 'Import job dispatched.']);
     }
+
+    public function audit()
+    {
+        $audits = Audit::with(['user', 'auditable'])
+            ->where('auditable_type', 'borrowing')
+            ->latest()
+            ->get()
+            ->map(function ($audit) {
+                $model = optional($audit->auditable);
+
+                return [
+                    'user' => optional($audit->user)->name ?? 'System',
+                    'event' => $audit->event,
+                    'model_type' => class_basename($audit->auditable_type),
+                    'id' => $audit->auditable_id . $audit->id,
+                    'old_values' => $audit->old_values,
+                    'new_values' => $audit->new_values,
+                    'created_at' => $audit->created_at->toDateTimeString(),
+                ];
+            });
+
+        return response()->json(['data' => $audits]);
+    }
 }
